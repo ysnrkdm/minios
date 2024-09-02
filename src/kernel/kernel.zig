@@ -1,3 +1,5 @@
+const tty = @import("tty.zig");
+
 pub export fn memset(buf: [*]u32, c: u32, n: usize) void {
     var p: [*]u32 = buf;
     var count: usize = 0;
@@ -9,6 +11,9 @@ pub export fn memset(buf: [*]u32, c: u32, n: usize) void {
 }
 
 pub export fn kernelMain() void {
+    tty.init();
+    tty.printf("\n\n{s}\n", .{"Hello World!"});
+    tty.printf("1 + 2 = {}\n", .{1 + 2});
     while (true) {}
 }
 
