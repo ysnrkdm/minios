@@ -1,6 +1,7 @@
 const std = @import("std");
 const log = std.log.scoped(.kernel);
 const tty = @import("tty.zig");
+const panic = @import("panic.zig").panic;
 
 pub export fn memset(buf: [*]u32, c: u32, n: usize) void {
     var p: [*]u32 = buf;
@@ -17,6 +18,8 @@ pub export fn kernelMain() void {
     tty.printf("\n\n{s}\n", .{"Hello World!"});
     tty.printf("1 + 2 = {}\n", .{1 + 2});
     log.info("{s}", .{"kernel logging to tty!"});
+    panic(@src(), "booted!", .{});
+    log.info("{s}", .{"cannot reach this line"});
     while (true) {}
 }
 

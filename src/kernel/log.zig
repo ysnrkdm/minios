@@ -13,5 +13,5 @@ fn logCallback(context: void, str: []const u8) LoggingError!usize {
 }
 
 pub fn log(comptime level: std.log.Level, comptime format: []const u8, args: anytype) void {
-    fmt.format(Writer{ .context = {} }, "[" ++ @tagName(level) ++ "] " ++ format, args) catch unreachable;
+    fmt.format(Writer{ .context = {} }, "[" ++ @tagName(level) ++ "] " ++ format ++ "\n", args) catch unreachable;
 }

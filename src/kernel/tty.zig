@@ -1,6 +1,7 @@
 const std = @import("std");
 const fmt = std.fmt;
 const arch = @import("arch.zig").internals;
+const panic = @import("panic.zig").panic;
 const log = std.log.scoped(.tty);
 
 const Writer = std.io.Writer(void, anyerror, printCallback);
@@ -18,9 +19,9 @@ pub fn init() void {
 fn printCallback(ctx: void, str: []const u8) !usize {
     // Suppress unused var warning
     _ = ctx;
-    tty.print(str) catch {
+    tty.print(str) catch |e| {
         // want to panic the error...
-        // panic(@errorReturnTrace(), "Failed to print to tty: {}\n", .{e})
+        panic(@src(), "Failed to print to tty: {}\n", .{e});
     };
     return str.len;
 }
