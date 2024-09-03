@@ -1,3 +1,5 @@
+const std = @import("std");
+const log = std.log.scoped(.kernel);
 const tty = @import("tty.zig");
 
 pub export fn memset(buf: [*]u32, c: u32, n: usize) void {
@@ -14,11 +16,11 @@ pub export fn kernelMain() void {
     tty.init();
     tty.printf("\n\n{s}\n", .{"Hello World!"});
     tty.printf("1 + 2 = {}\n", .{1 + 2});
+    log.info("{s}", .{"kernel logging to tty!"});
     while (true) {}
 }
 
 test "memset can zeros the meomry region" {
-    const std = @import("std");
     var message = [_]u32{ 'h', 'e', 'l', 'l', 'o' };
     memset(&message, 0, 5);
     try std.testing.expect(0 == message[0]);

@@ -1,6 +1,7 @@
 const std = @import("std");
 const fmt = std.fmt;
 const arch = @import("arch.zig").internals;
+const log = std.log.scoped(.tty);
 
 const Writer = std.io.Writer(void, anyerror, printCallback);
 
@@ -26,9 +27,9 @@ fn printCallback(ctx: void, str: []const u8) !usize {
 
 pub fn printf(comptime format: []const u8, args: anytype) void {
     // Printing can't error because of the scrolling, if it does, we have a big problem
-    fmt.format(Writer{ .context = {} }, format, args) catch {
+    fmt.format(Writer{ .context = {} }, format, args) catch |e| {
         // want to log the error...
-        // log.err("Error printing. Error: {}\n", .{e});
+        log.err("Error printing. Error: {}\n", .{e});
     };
 }
 
