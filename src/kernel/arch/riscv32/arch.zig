@@ -4,5 +4,6 @@ const TTY = @import("../../tty.zig").TTY;
 pub fn initTTY() TTY {
     return .{
         .print = tty.writeString,
+        .putChar = tty.putChar,
     };
 }
