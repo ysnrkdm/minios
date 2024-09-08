@@ -41,10 +41,11 @@ pub fn printk(comptime format: []const u8, args: anytype) void {
                 },
                 'd' => {
                     const uvalue: i32 = @intCast(@field(args, fields_info[va_pos].name));
+                    va_pos += 1;
                     if (uvalue < 0) {
                         tty.print("-") catch {};
                     }
-                    var value: u32 = @intCast(uvalue);
+                    var value: u32 = if (uvalue < 0) @intCast(-uvalue) else @intCast(uvalue);
                     var divisor: u32 = 1;
                     while (value / divisor > 9) : (divisor *= 10) {}
                     while (divisor > 0) : (divisor /= 10) {
@@ -55,10 +56,11 @@ pub fn printk(comptime format: []const u8, args: anytype) void {
                 },
                 'x' => {
                     const value: u32 = @intCast(@field(args, fields_info[va_pos].name));
+                    va_pos += 1;
                     tty.print("0x") catch {};
-                    for (0..7) |ith| {
+                    for (0..8) |ith| {
                         const shif: u5 = @intCast((7 - ith));
-                        const nibble = (value >> (shif * 4)) & 0x000f;
+                        const nibble = (value >> (shif * 4)) & 0xf;
                         tty.putChar("0123456789abcdef"[nibble]);
                     }
                 },

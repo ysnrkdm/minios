@@ -19,6 +19,8 @@ pub export fn kernelMain() void {
     tty.init();
     tty.printk("\n\n%s\n", .{"Hello World!"});
     tty.printk("10 + 20 = %d\n", .{10 + 20});
+    tty.printk("10 - 20 = %d\n", .{10 - 20});
+    tty.printk("%s: %d %x\n", .{ "printk test, negative integer and hex", -22, 0xdeadbeef });
     log.info("%s", .{"kernel logging to tty!"});
     // panic(@src(), "booted!", .{});
     log.info("%s", .{"cannot reach this line"});
@@ -132,7 +134,7 @@ export fn handleTrap(trap_frame: TrapFrame) void {
     );
 
     // panic(@src(), "unexpected trap scause={d}\n", .{scause});
-    panic(@src(), "unexpected trap scause=%d, stval=%d, sepc=%x\n", .{ scause, stval, user_pc });
+    panic(@src(), "unexpected trap scause=%x, stval=%x, sepc=%x\n", .{ scause, stval, user_pc });
 }
 
 pub const TrapFrame = extern struct {
