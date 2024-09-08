@@ -3,8 +3,8 @@ const log = std.log.scoped(.kernel);
 const tty = @import("tty.zig");
 const panic = @import("panic.zig").panic;
 
-pub export fn memset(buf: [*]u32, c: u32, n: usize) void {
-    var p: [*]u32 = buf;
+pub fn memset(buf: [*]u8, c: u8, n: usize) void {
+    var p: [*]u8 = buf;
     var count: usize = 0;
 
     while (count < n) {
@@ -13,23 +13,88 @@ pub export fn memset(buf: [*]u32, c: u32, n: usize) void {
     }
 }
 
-pub export fn kernelMain() void {
+extern var __free_ram: [*]u8;
+extern var __free_ram_end: [*]u8;
+
+const PAGE_SIZE = 4096; // 4KB, 0x1000 bytes
+var next_paddr: [*]u8 = undefined;
+var free_ram_end: [*]u8 = undefined;
+
+pub const AllocError = error{OutOfMemory};
+
+pub fn kernelMain() void {
+    // Initializations for kernel use ========================================
+
     // Register exception handler
     registerExceptionHandler();
     tty.init();
+    log.info("Initializing memory [%x - %x]", .{
+        @intFromPtr(&__free_ram),
+        @intFromPtr(&__free_ram_end),
+    });
+    next_paddr = @ptrFromInt(@intFromPtr(&__free_ram));
+    free_ram_end = @ptrFromInt(@intFromPtr(&__free_ram_end));
+    log.info("Initialized memory [%x - %x]", .{
+        @intFromPtr(next_paddr),
+        @intFromPtr(free_ram_end),
+    });
+
+    // Kernel tests ========================================
+
+    // Print tests
     tty.printk("\n\n%s\n", .{"Hello World!"});
     tty.printk("10 + 20 = %d\n", .{10 + 20});
     tty.printk("10 - 20 = %d\n", .{10 - 20});
     tty.printk("%s: %d %x\n", .{ "printk test, negative integer and hex", -22, 0xdeadbeef });
     log.info("%s", .{"kernel logging to tty!"});
-    // panic(@src(), "booted!", .{});
-    log.info("%s", .{"cannot reach this line"});
+
+    // Mem alloc tests
+    const allocated1 = allocPages(2) catch {
+        panic(@src(), "Mem alloc error!", .{});
+    };
+    log.info("Mem: allocated from [%x]", .{@intFromPtr(allocated1)});
+    const allocated2 = allocPages(1) catch {
+        panic(@src(), "Mem alloc error!", .{});
+    };
+    log.info("Mem: allocated from [%x]", .{@intFromPtr(allocated2)});
 
     // invalid opcode to trigger exception
     asm volatile (
         \\ unimp
     );
+    log.info("%s", .{"cannot reach this line"});
     while (true) {}
+}
+
+fn allocPages(pages: usize) AllocError![*]u8 {
+    const ret_addr = next_paddr;
+    const next_paddr_cand: [*]u8 = @ptrFromInt(@intFromPtr(ret_addr) + PAGE_SIZE * pages);
+    if (@intFromPtr(next_paddr_cand) > @intFromPtr(free_ram_end)) {
+        // Failed to allocate
+        log.err("Allocator error: cannot allocate %d pages from current free addr %x (page size = %x) to end %x (requested: %x). I don't allocate it.", .{
+            pages,
+            @intFromPtr(ret_addr),
+            PAGE_SIZE,
+            @intFromPtr(free_ram_end),
+            @intFromPtr(next_paddr_cand),
+        });
+        return AllocError.OutOfMemory;
+    }
+
+    log.debug("Allocator: %d pages from current free addr %x (page size = %x) to end %x (requested: %x). %x", .{
+        pages,
+        @intFromPtr(ret_addr),
+        PAGE_SIZE,
+        @intFromPtr(free_ram_end),
+        @intFromPtr(next_paddr_cand),
+    });
+
+    // Move the global pointer
+    next_paddr = next_paddr_cand;
+
+    // zero clear
+    memset(ret_addr, 0, pages);
+    return ret_addr;
 }
 
 fn registerExceptionHandler() void {

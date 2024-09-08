@@ -55,7 +55,7 @@ pub fn printk(comptime format: []const u8, args: anytype) void {
                     }
                 },
                 'x' => {
-                    const value: u32 = @intCast(@field(args, fields_info[va_pos].name));
+                    const value: usize = @intCast(@field(args, fields_info[va_pos].name));
                     va_pos += 1;
                     tty.print("0x") catch {};
                     for (0..8) |ith| {
@@ -77,5 +77,6 @@ pub fn print(str: []const u8) void {
 }
 
 pub fn println(str: []const u8) void {
-    tty.print(str + "\n") catch {};
+    tty.print(str) catch {};
+    tty.print("\n") catch {};
 }

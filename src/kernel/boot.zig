@@ -2,8 +2,8 @@ const std = @import("std");
 const log_root = @import("log.zig");
 const kernel = @import("kernel.zig");
 
-extern var __bss: [*]u32;
-extern var __bss_end: [*]u32;
+extern var __bss: [*]u8;
+extern var __bss_end: [*]u8;
 
 export fn _start() align(32) linksection(".text.boot") callconv(.Naked) noreturn {
     // set __stack_top to sp
