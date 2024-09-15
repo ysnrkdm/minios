@@ -2,6 +2,8 @@ const std = @import("std");
 const log = std.log.scoped(.kernel);
 const tty = @import("tty.zig");
 const panic = @import("panic.zig").panic;
+const task = @import("task.zig");
+const Task = task.Task;
 
 pub fn memset(buf: [*]u8, c: u8, n: usize) void {
     var p: [*]u8 = buf;
@@ -58,6 +60,10 @@ pub fn kernelMain() void {
     };
     log.info("Mem: allocated from [%x]", .{@intFromPtr(allocated2)});
 
+    task_a = Task.create(@intFromPtr(&procAEntry));
+    task_b = Task.create(@intFromPtr(&procBEntry));
+    procAEntry();
+
     // invalid opcode to trigger exception
     asm volatile (
         \\ unimp
@@ -66,7 +72,32 @@ pub fn kernelMain() void {
     while (true) {}
 }
 
-fn allocPages(pages: usize) AllocError![*]u8 {
+var task_a: *Task = undefined;
+var task_b: *Task = undefined;
+
+fn procAEntry() void {
+    log.info("Process A Started", .{});
+    while (true) {
+        log.info("A", .{});
+        task.switchContext(task_a, task_b);
+        for (0..30000000) |_| {
+            asm volatile ("nop");
+        }
+    }
+}
+
+fn procBEntry() void {
+    log.info("Process B Started", .{});
+    while (true) {
+        log.info("B", .{});
+        task.switchContext(task_b, task_a);
+        for (0..30000000) |_| {
+            asm volatile ("nop");
+        }
+    }
+}
+
+pub fn allocPages(pages: usize) AllocError![*]u8 {
     const ret_addr = next_paddr;
     const next_paddr_cand: [*]u8 = @ptrFromInt(@intFromPtr(ret_addr) + PAGE_SIZE * pages);
     if (@intFromPtr(next_paddr_cand) > @intFromPtr(free_ram_end)) {
