@@ -23,18 +23,18 @@ pub const TaskState = enum {
 };
 
 pub const Task = struct {
-    pid: usize,
+    pid: i32,
     state: TaskState,
     stack_pointer: *u32,
     kernel_stack: [8192]u32,
 
     pub fn create(pc: usize) *Task {
         var task: *Task = undefined;
-        var pid: usize = 0;
+        var pid: i32 = 0;
         for (0..PROCS_MAX) |i| {
             if (tasks[i].state == .TASK_UNUSED) {
                 task = &tasks[i];
-                pid = i;
+                pid = @intCast(i);
                 break;
             }
             if (i == PROCS_MAX - 1) {
@@ -47,7 +47,7 @@ pub const Task = struct {
         return task;
     }
 
-    pub fn init(self: *Task, pid: usize, pc: usize) void {
+    pub fn init(self: *Task, pid: i32, pc: usize) void {
         self.pid = pid;
 
         // initialize stack
@@ -70,7 +70,7 @@ pub const Task = struct {
         self.stack_pointer = &sp.*[stack_bottom];
         self.state = .TASK_RUNNABLE;
 
-        log.info("pc to set is %x, sp is %x", .{ pc, @intFromPtr(self.stack_pointer) });
+        log.info("pc to set is %x, sp is %x for pid %d", .{ pc, @intFromPtr(self.stack_pointer), pid });
     }
 };
 
@@ -115,4 +115,72 @@ pub fn switchContext(prev_task: *Task, next_task: *Task) void {
 
     // Actually doesn't reach here - ret is called in the asm above
     return;
+}
+
+var current_process: *Task = undefined;
+var idle_process: *Task = undefined;
+
+pub fn initScheduler() void {
+    idle_process = Task.create(0);
+    idle_process.pid = -1;
+    current_process = idle_process;
+}
+
+pub fn yield() void {
+    // log.info("yield!", .{});
+    var next: *Task = undefined;
+    for (0..PROCS_MAX) |i| {
+        if (current_process.pid != tasks[i].pid and tasks[i].state == .TASK_RUNNABLE and tasks[i].pid > 0) {
+            next = &tasks[i];
+        }
+    }
+
+    if (next == current_process) {
+        return;
+    }
+
+    const prev = current_process;
+    current_process = next;
+
+    asm volatile (
+        \\ lw sp, (%[prev_sp])
+        \\ addi sp, sp, -13 * 4
+        \\ sw ra,  0  * 4(sp)
+        \\ sw s0,  1  * 4(sp)
+        \\ sw s1,  2  * 4(sp)
+        \\ sw s2,  3  * 4(sp)
+        \\ sw s3,  4  * 4(sp)
+        \\ sw s4,  5  * 4(sp)
+        \\ sw s5,  6  * 4(sp)
+        \\ sw s6,  7  * 4(sp)
+        \\ sw s7,  8  * 4(sp)
+        \\ sw s8,  9  * 4(sp)
+        \\ sw s9,  10 * 4(sp)
+        \\ sw s10, 11 * 4(sp)
+        \\ sw s11, 12 * 4(sp)
+        \\ sw sp, (%[prev_sp])
+        \\ lw sp, (%[next_sp])
+        \\ lw ra,  0  * 4(sp)
+        \\ lw s0,  1  * 4(sp)
+        \\ lw s1,  2  * 4(sp)
+        \\ lw s2,  3  * 4(sp)
+        \\ lw s3,  4  * 4(sp)
+        \\ lw s4,  5  * 4(sp)
+        \\ lw s5,  6  * 4(sp)
+        \\ lw s6,  7  * 4(sp)
+        \\ lw s7,  8  * 4(sp)
+        \\ lw s8,  9  * 4(sp)
+        \\ lw s9,  10 * 4(sp)
+        \\ lw s10, 11 * 4(sp)
+        \\ lw s11, 12 * 4(sp)
+        \\ addi sp, sp, 13 * 4
+        \\ ret
+        :
+        : [prev_sp] "r" (&prev.stack_pointer),
+          [next_sp] "r" (&next.stack_pointer),
+    );
+
+    // Cannot call this - has to be naked + inline
+    // But difficult to do that in zig
+    // switchContext(prev, next);
 }

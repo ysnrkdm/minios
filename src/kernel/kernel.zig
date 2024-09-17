@@ -60,8 +60,11 @@ pub fn kernelMain() void {
     };
     log.info("Mem: allocated from [%x]", .{@intFromPtr(allocated2)});
 
+    task.initScheduler();
+
     task_a = Task.create(@intFromPtr(&procAEntry));
     task_b = Task.create(@intFromPtr(&procBEntry));
+
     procAEntry();
 
     // invalid opcode to trigger exception
@@ -79,7 +82,8 @@ fn procAEntry() void {
     log.info("Process A Started", .{});
     while (true) {
         log.info("A", .{});
-        task.switchContext(task_a, task_b);
+        task.yield();
+        // task.switchContext(task_a, task_b);
         for (0..30000000) |_| {
             asm volatile ("nop");
         }
@@ -90,7 +94,8 @@ fn procBEntry() void {
     log.info("Process B Started", .{});
     while (true) {
         log.info("B", .{});
-        task.switchContext(task_b, task_a);
+        task.yield();
+        // task.switchContext(task_b, task_a);
         for (0..30000000) |_| {
             asm volatile ("nop");
         }
